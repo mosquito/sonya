@@ -83,7 +83,7 @@ def test_create_schema(key_t, value_t, sonya_env):
         elif isinstance(idx, PickleIndex):
             key_sample += (frozenset({1, 2, 3}),)
         elif isinstance(idx, BytesIndex):
-            key_sample += (b'\0',)
+            key_sample += (b'\0' * 100,)
         elif isinstance(idx, StringIndex):
             key_sample += ('Hello',)
         else:
