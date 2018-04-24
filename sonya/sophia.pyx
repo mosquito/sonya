@@ -25,9 +25,12 @@ cdef extern from "src/sophia.h" nogil:
 
 
 class SophiaError(Exception): pass
+
 class SophiaClosed(SophiaError): pass
-class DocumentClosed(SophiaError): pass
+class DocumentClosed(SophiaClosed): pass
+
 class BadQuery(SophiaError): pass
+
 class TransactionError(SophiaError): pass
 class TransactionRollback(TransactionError): pass
 class TransactionLocked(TransactionError): pass
