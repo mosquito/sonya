@@ -3,6 +3,7 @@ from libc.stdint cimport int64_t
 from libc.stdlib cimport calloc, free
 from libc.string cimport memcpy, memcmp
 
+from collections import namedtuple
 
 cdef extern from "src/sophia.h" nogil:
     cdef void *sp_env()
@@ -36,16 +37,19 @@ class TransactionRollback(TransactionError): pass
 class TransactionLocked(TransactionError): pass
 
 
+IndexType = namedtuple('IndexType', ('value', 'is_bytes'))
+
+
 cdef class Types:
-    string = b'string'
-    u64 = b'u64'
-    u32 = b'u32'
-    u16 = b'u16'
-    u8 = b'u8'
-    u64_rev = b'u64_rev'
-    u32_rev = b'u32_rev'
-    u16_rev = b'u16_rev'
-    u8_rev = b'u8_rev'
+    string = IndexType(b'string', True)
+    u64 = IndexType(b'u64', False)
+    u32 = IndexType(b'u32', False)
+    u16 = IndexType(b'u16', False)
+    u8 = IndexType(b'u8', False)
+    u64_rev = IndexType(b'u64_rev', False)
+    u32_rev = IndexType(b'u32_rev', False)
+    u16_rev = IndexType(b'u16_rev', False)
+    u8_rev = IndexType(b'u8_rev', False)
 
 
 cdef class cstring:
@@ -59,13 +63,11 @@ cdef class cstring:
         return cls(string.encode())
 
     def __cinit__(self, bytes value):
-        cdef size_t size
         cdef char* cvalue = value
-
         self.size = len(value)
 
         with nogil:
-            self.c_str = <char*> calloc(self.size, sizeof(char))
+            self.c_str = <char*> calloc(self.size + 1, sizeof(char))
             memcpy(<void*> self.c_str, <void*> cvalue, self.size)
 
     def __dealloc__(self):
@@ -78,6 +80,7 @@ cdef class cstring:
     def __repr__(self):
         return self.__str__()
 
+    @property
     def value(self):
         return self.c_str[:self.size]
 
@@ -90,29 +93,37 @@ cdef class cstring:
         with nogil:
             result = memcmp(self.c_str, other.c_str, self.size)
 
-        return True if result == 0 else False
+        return result == 0
 
 
 cdef class Environment(object):
     cdef void *env
     cdef readonly bool _closed
-    cdef readonly Configuration configuration
+    cdef readonly Configuration _configuration
 
     def __check_error(self, int rc):
         if rc != -1:
             return rc
 
-        error = self.get_string('sophia.error') or 'unknown error occurred.'
+        try:
+            error = self.get_string('sophia.error').decode('utf-8', 'ignore')
+        except KeyError:
+            error = 'unknown error occurred.'
+
         raise SophiaError(error)
 
     def check_closed(self):
         if self._closed:
-            raise SophiaClosed
+            raise SophiaClosed("Environment closed")
 
     def __cinit__(self):
         self.env = sp_env()
         self._closed = False
-        self.configuration = Configuration(self)
+        self._configuration = Configuration(self)
+
+    @property
+    def configuration(self) -> dict:
+        return dict(self._configuration)
 
     @property
     def is_closed(self):
@@ -157,7 +168,7 @@ cdef class Environment(object):
         if buf == NULL:
             raise KeyError("Key %r not found in document" % key)
 
-        value = buf[:nlen - 1]
+        value = buf[:nlen]
         return value
 
     def get_int(self, str key) -> int:
@@ -224,14 +235,19 @@ cdef class Configuration:
         self.env = env
 
     def __iter__(self):
+        self.env.check_closed()
+
         cdef void *cursor
 
         with nogil:
             cursor = sp_getobject(self.env.env, NULL);
 
         if cursor == NULL:
-            error = self.env.get_string('sophia.error') or \
-                    'unknown error occurred.'
+            try:
+                error = self.env.get_string('sophia.error').decode('utf-8', 'ignore')
+            except KeyError:
+                error = 'unknown error occurred.'
+
             raise SophiaError(error)
 
 
@@ -276,23 +292,26 @@ cdef class Configuration:
 
 cdef class Transaction:
     cdef void* tx
-    cdef Environment env
-    cdef bool closed
+    cdef readonly Environment env
+    cdef readonly bool closed
     cdef readonly list __refs
 
     def __check_error(self, int rc):
         if rc != -1:
             return rc
 
-        error = self.env.get_string('sophia.error') or 'unknown error occurred.'
+        try:
+            error = self.env.get_string('sophia.error').decode('utf-8', 'ignore')
+        except KeyError:
+            error = 'unknown error occurred.'
+
         raise SophiaError(error)
 
     def __check_closed(self):
         if self.closed:
             raise TransactionError('Transaction closed')
 
-        if self.env.is_closed:
-            raise SophiaClosed("Environment closed")
+        self.env.check_closed()
 
     def __cinit__(self, Environment env):
         self.closed = True
@@ -374,7 +393,11 @@ cdef class Database:
         if rc != -1:
             return
 
-        error = self.env.get_string('sophia.error') or 'unknown error occurred.'
+        try:
+            error = self.env.get_string('sophia.error').decode('utf-8', 'ignore')
+        except KeyError:
+            error = 'unknown error occurred.'
+
         raise SophiaError(error)
 
     def document(self) -> Document:
@@ -386,17 +409,20 @@ cdef class Database:
         return doc
 
     def get(self, Document query) -> Document:
-        result = Document(self)
+        cdef void* result_ptr = NULL
 
         with nogil:
-            result.obj = sp_get(self.db, query.obj)
+            result_ptr = sp_get(self.db, query.obj)
 
-        if result.obj == NULL:
+        if result_ptr == NULL:
             self.__check_error(-1)
 
+        result = Document(self, external=True)
+        result.obj = result_ptr
+        result.external = False
         return result
 
-    def set(self, Document document) -> int :
+    def set(self, Document document) -> int:
         cdef int rc
 
         with nogil:
@@ -443,8 +469,11 @@ cdef class Cursor:
             obj = sp_document(self.db.db)
 
         if obj == NULL:
-            error = self.env.get_string('sophia.error') or \
-                    'unknown error occurred.'
+            try:
+                error = self.env.get_string('sophia.error').decode('utf-8', 'ignore')
+            except KeyError:
+                error = 'unknown error occurred.'
+
             raise SophiaError(error)
 
 
@@ -454,8 +483,11 @@ cdef class Cursor:
             cursor = sp_cursor(self.env.env)
 
         if not cursor:
-            error = self.env.get_string('sophia.error') or \
-                    'unknown error occurred.'
+            try:
+                error = self.env.get_string('sophia.error').decode('utf-8', 'ignore')
+            except KeyError:
+                error = 'unknown error occurred.'
+
             raise SophiaError(error)
 
 
@@ -536,8 +568,11 @@ cdef class Document:
         if rc != -1:
             return
 
-        error = self.db.env.get_string('sophia.error') or \
-                'unknown error occurred.'
+        try:
+            error = self.db.env.get_string('sophia.error').decode('utf-8', 'ignore')
+        except KeyError:
+            error = 'unknown error occurred.'
+
         raise SophiaError(error)
 
 
@@ -555,7 +590,7 @@ cdef class Document:
         if buf == NULL:
             raise KeyError('Key %r not found in the document' % key)
 
-        cdef bytes value = buf[:nlen - 1]
+        cdef bytes value = buf[:nlen]
         return value
 
     def get_int(self, str key) -> int:

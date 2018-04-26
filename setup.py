@@ -53,10 +53,18 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: Implementation :: CPython',
     ],
+    python_requires=">=2.7.*, <4",
+    install_requires=[
+        'six',
+    ],
     extras_require={
         'develop': [
             'Cython',
             'pytest',
         ],
+        'msgpack': [
+            'msgpack-python',
+        ],
+        ':python_version < "3"': 'py2-ipaddress',
     },
 )
