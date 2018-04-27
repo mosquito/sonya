@@ -240,7 +240,7 @@ cdef class Configuration:
         cdef void *cursor
 
         with nogil:
-            cursor = sp_getobject(self.env.env, NULL);
+            cursor = sp_getobject(self.env.env, NULL)
 
         if cursor == NULL:
             try:
@@ -413,11 +413,13 @@ cdef class Database:
 
         with nogil:
             result_ptr = sp_get(self.db, query.obj)
+            # sp_get destroy object inside
+            query.obj = NULL
 
         if result_ptr == NULL:
-            self.__check_error(-1)
+            raise LookupError
 
-        result = Document(self, external=True)
+        result = Document(self, external=True, readonly=True)
         result.obj = result_ptr
         result.external = False
         return result
@@ -462,7 +464,7 @@ cdef class Cursor:
             raise ValueError('Invalid order')
 
     def __iter__(self):
-        document = Document(self.db, external=True)
+        document = Document(self.db, external=True, readonly=True)
 
         cdef void* obj
         with nogil:
@@ -532,6 +534,7 @@ cdef class Document:
     cdef readonly Database db
     cdef char external
     cdef readonly list __refs
+    cdef readonly bool readonly
 
     def __check_closed(self):
         if self.closed:
@@ -540,10 +543,11 @@ cdef class Document:
         if self.db.env.is_closed:
             raise SophiaClosed
 
-    def __cinit__(self, Database db, external=False):
+    def __cinit__(self, Database db, external=False, readonly=False):
         self.db = db
         self.external = 1 if external else 0
         self.__refs = []
+        self.readonly = readonly
 
         if not self.external:
             with nogil:
@@ -605,6 +609,9 @@ cdef class Document:
         return result
 
     def set_string(self, str key, bytes value) -> int:
+        if self.readonly:
+            raise RuntimeError('read-only document')
+
         self.__check_closed()
 
         cdef int rc
@@ -620,6 +627,9 @@ cdef class Document:
         return rc
 
     def set_int(self, str key, int value) -> int:
+        if self.readonly:
+            raise RuntimeError('read-only document')
+
         self.__check_closed()
 
         cdef int rc
