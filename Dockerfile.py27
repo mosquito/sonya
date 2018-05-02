@@ -1,0 +1,6 @@
+FROM python:2.7
+
+RUN pip install -U cython
+
+ADD . /tmp
+RUN pip --version && pip install -U '/tmp/[develop]' && echo pip2

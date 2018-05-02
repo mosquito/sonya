@@ -1,9 +1,13 @@
-import pickle
-from .bytes import BytesField
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+
+from .bytes_field import BytesField
 
 
 class PickleField(BytesField):
-    DEFAULT = None
+    DEFAULT = pickle.dumps(None)
 
     def from_python(self, value):
         return pickle.dumps(value)

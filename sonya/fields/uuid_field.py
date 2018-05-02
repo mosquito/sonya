@@ -1,5 +1,5 @@
 from uuid import UUID
-from .bytes import BytesField
+from .bytes_field import BytesField
 
 
 class UUIDField(BytesField):

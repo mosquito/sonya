@@ -20,6 +20,8 @@ class BytesField(BaseField):
 
 
 class StringField(BytesField):
+    DEFAULT = ''
+
     def from_python(self, value):
         """
         :type value: str

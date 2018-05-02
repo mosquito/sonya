@@ -1,0 +1,6 @@
+FROM python:3.6
+
+RUN pip install -U cython
+
+ADD . /tmp
+RUN pip --version && pip install -U '/tmp/[develop]' && echo pip3

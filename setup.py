@@ -1,7 +1,7 @@
 try:
-    from setuptools import setup, Extension
+    from setuptools import setup, Extension, find_packages
 except ImportError:
-    from distutils.core import setup, Extension
+    from distutils.core import setup, Extension, find_packages
 
 
 try:
@@ -36,7 +36,7 @@ setup(
     ext_modules=extensions,
     license='BSD',
     include_package_data=True,
-    packages=['sonya'],
+    packages=find_packages(exclude=['tests']),
     classifiers=[
         'License :: OSI Approved :: BSD License',
         'Topic :: Software Development',
@@ -61,10 +61,12 @@ setup(
         'develop': [
             'Cython',
             'pytest',
+            'backports.tempfile',
+            'msgpack-python',
         ],
         'msgpack': [
             'msgpack-python',
         ],
-        ':python_version < "3"': 'py2-ipaddress',
+        ':python_version < "3"': ['py2-ipaddress', 'enum34'],
     },
 )

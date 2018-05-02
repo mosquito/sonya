@@ -1,9 +1,9 @@
 import ipaddress
-from .integer import Int64Field, Int32Field
+from .integer_field import UInt64Field, UInt32Field
 
 
-class IPv6Field(Int64Field):
-    DEFAULT = '::'
+class IPv6Field(UInt64Field):
+    DEFAULT = ipaddress.IPv6Address('::')
 
     def from_python(self, value):
         return int(ipaddress.IPv6Address(value))
@@ -12,8 +12,8 @@ class IPv6Field(Int64Field):
         return ipaddress.IPv6Address(value)
 
 
-class IPv4Field(Int32Field):
-    DEFAULT = '0.0.0.0'
+class IPv4Field(UInt32Field):
+    DEFAULT = ipaddress.IPv4Address('0.0.0.0')
 
     def from_python(self, value):
         return int(ipaddress.IPv4Address(value))

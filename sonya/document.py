@@ -1,14 +1,21 @@
 class Document:
-    def __init__(self, doc, schema):
+    __slots__ = 'value', '__schema', '__types', '__readonly'
+
+    def __init__(self, doc, schema, readonly=False):
+        """
+
+        :type schema: Schema
+        """
         self.value = doc
         self.__schema = schema
         self.__types = {}
+        self.__readonly = readonly
 
         for field_name, field_type in self.__schema:
             self.__types[field_name] = field_type
 
-            if field_type.index is not None:
-                self[field_name] = field_type.DEFAULT
+            if not self.__readonly:
+                self[field_name] = field_type.default
 
     def update(self, **kwargs):
         for key, value in kwargs.items():
@@ -44,8 +51,10 @@ class Document:
         for key in self.__types:
             if key in self:
                 yield key, self[key]
-            else:
-                continue
+
+    @property
+    def __dict__(self):
+        return dict(self)
 
     def __repr__(self):
         return '%r' % dict(self)

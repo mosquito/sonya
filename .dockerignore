@@ -1,0 +1,7 @@
+env*
+*.egg-info
+dist
+build
+.*/
+sonya/*.so
+sonya/*.c

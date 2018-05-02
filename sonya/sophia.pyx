@@ -118,7 +118,7 @@ cdef class Environment(object):
 
     def __cinit__(self):
         self.env = sp_env()
-        self._closed = False
+        self._closed = None
         self._configuration = Configuration(self)
 
     @property
@@ -128,6 +128,10 @@ cdef class Environment(object):
     @property
     def is_closed(self):
         return self._closed
+
+    @property
+    def is_opened(self):
+        return self._closed is not None
 
     def open(self) -> int:
         self.check_closed()
@@ -144,8 +148,9 @@ cdef class Environment(object):
 
         cdef int rc
 
-        with nogil:
-            rc = sp_destroy(self.env)
+        if self.is_opened and self.env != NULL:
+            with nogil:
+                rc = sp_destroy(self.env)
 
         self._closed = True
 
@@ -223,10 +228,6 @@ cdef class Environment(object):
 
         return db
 
-    def transaction(self) -> Transaction:
-        self.check_closed()
-        return Transaction(self)
-
 
 cdef class Configuration:
     cdef readonly Environment env
@@ -293,6 +294,7 @@ cdef class Configuration:
 cdef class Transaction:
     cdef void* tx
     cdef readonly Environment env
+    cdef readonly Database db
     cdef readonly bool closed
     cdef readonly list __refs
 
@@ -313,9 +315,10 @@ cdef class Transaction:
 
         self.env.check_closed()
 
-    def __cinit__(self, Environment env):
+    def __cinit__(self, Environment env, Database db):
         self.closed = True
         self.env = env
+        self.db = db
 
         with nogil:
             self.tx = sp_begin(env.env)
@@ -329,6 +332,9 @@ cdef class Transaction:
     def set(self, Document document) -> int:
         self.__check_closed()
 
+        if document.closed:
+            raise DocumentClosed
+
         cdef int rc
 
         with nogil:
@@ -338,6 +344,25 @@ cdef class Transaction:
         self.__check_error(rc)
         self.__refs.append(Document)
         return rc
+
+    def get(self, Document query) -> Document:
+        cdef void* result_ptr = NULL
+
+        with nogil:
+            result_ptr = sp_get(self.tx, query.obj)
+            # sp_get destroy object inside
+            query.obj = NULL
+
+        if result_ptr == NULL:
+            raise LookupError
+
+        if self.db is None:
+            raise RuntimeError("Can not get object on environment transaction")
+
+        result = Document(self.db, external=True, readonly=True)
+        result.obj = result_ptr
+        result.external = False
+        return result
 
     def commit(self) -> int:
         self.__check_closed()
@@ -362,8 +387,9 @@ cdef class Transaction:
     def rollback(self) -> int:
         self.__check_closed()
 
-        with nogil:
-            sp_destroy(self.tx)
+        if self.tx != NULL:
+            with nogil:
+                sp_destroy(self.tx)
 
         self.tx = NULL
         self.closed = True
@@ -427,8 +453,12 @@ cdef class Database:
     def set(self, Document document) -> int:
         cdef int rc
 
+        if document.closed:
+            raise DocumentClosed
+
         with nogil:
             rc = sp_set(self.db, document.obj)
+            document.obj = NULL
 
         return self.__check_error(rc)
 
@@ -444,7 +474,8 @@ cdef class Database:
         return Cursor(self.env, query, self)
 
     def transaction(self) -> Transaction:
-        return self.env.transaction()
+        self.env.check_closed()
+        return Transaction(self.env, self)
 
 
 cdef class Cursor:
@@ -464,7 +495,7 @@ cdef class Cursor:
             raise ValueError('Invalid order')
 
     def __iter__(self):
-        document = Document(self.db, external=True, readonly=True)
+        document = Document(self.db, external=True)
 
         cdef void* obj
         with nogil:
@@ -524,9 +555,11 @@ cdef class Cursor:
                 else:
                     document.obj = obj
                     yield document
+                    document.obj = NULL
         finally:
-            with nogil:
-                sp_destroy(cursor)
+            if cursor != NULL:
+                with nogil:
+                    sp_destroy(cursor)
 
 
 cdef class Document:

@@ -1,5 +1,5 @@
 import msgpack
-from .bytes import BytesField
+from .bytes_field import BytesField
 
 
 class MessagePackField(BytesField):
@@ -9,4 +9,4 @@ class MessagePackField(BytesField):
         return msgpack.packb(value, use_bin_type=True, encoding='utf-8')
 
     def to_python(self, value):
-        return msgpack.unpack(value, encoding='utf-8')
+        return msgpack.unpackb(value, encoding='utf-8')

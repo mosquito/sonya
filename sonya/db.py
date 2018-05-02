@@ -1,6 +1,42 @@
 from .document import Document
 
 
+class Transaction:
+    __slots__ = 'tx', 'db'
+
+    def __init__(self, db):
+        self.db = db
+        self.tx = db.db.transaction()
+
+    def set(self, document):
+        if not isinstance(document, Document):
+            raise ValueError
+
+        return self.tx.set(document.value)
+
+    def get(self, **kwargs):
+        if self.db is None:
+            raise RuntimeError("Can not get object on environment transaction")
+
+        doc = self.tx.get(self.db.document(**kwargs).value)
+        return Document(doc, self.db.schema, readonly=True)
+
+    def commit(self):
+        return self.tx.commit()
+
+    def rollback(self):
+        return self.tx.rollback()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            self.tx.commit()
+        else:
+            self.tx.rollback()
+
+
 class Database:
     def __init__(self, name, schema):
         """
@@ -36,9 +72,9 @@ class Database:
         return self
 
     def transaction(self):
-        return self.environment.transaction()
+        return Transaction(self)
 
-    def create_document(self, **kwargs):
+    def document(self, **kwargs):
         doc = Document(self.db.document(), self.schema)
         doc.update(**kwargs)
         return doc
@@ -50,5 +86,9 @@ class Database:
         self.db.set(document.value)
 
     def get(self, **kwargs):
-        doc = self.create_document(**kwargs)
-        return self.db.get(doc.value)
+        doc = self.document(**kwargs)
+        return Document(self.db.get(doc.value), self.schema, readonly=True)
+
+    def cursor(self, **query):
+        for doc in self.db.cursor(query):
+            yield Document(doc, self.schema, readonly=True)

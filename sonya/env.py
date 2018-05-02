@@ -1,32 +1,5 @@
 from . import sophia
 from .db import Database
-from .document import Document
-
-
-class Transaction:
-    def __init__(self, tx):
-        self.tx = tx
-
-    def set(self, document):
-        if not isinstance(document, Document):
-            raise ValueError
-
-        return self.tx.set(document.value)
-
-    def commit(self):
-        return self.tx.commit()
-
-    def rollback(self):
-        return self.tx.rollback()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is None:
-            self.tx.commit()
-        else:
-            self.tx.rollback()
 
 
 class Environment:
@@ -71,12 +44,29 @@ class Environment:
 
         return self.env.open() == 0
 
+    @property
+    def is_closed(self):
+        """
+        :return: bool
+        """
+        return self.env.is_closed
+
+    @property
+    def is_opened(self):
+        """
+        :return: bool
+        """
+        return self.env.is_opened
+
     def __del__(self):
         if not self.env.is_closed:
             self.close()
 
     def __getitem__(self, item):
         return self.engine_config[item]
+
+    def __iter__(self):
+        return iter(self.engine_config.items())
 
     def close(self):
         self.env.close()
@@ -96,10 +86,3 @@ class Environment:
 
         self.databases[name] = db, kwargs
         return db
-
-    def transaction(self):
-        """
-
-        :return: sophia.Transaction
-        """
-        return Transaction(self.env.transaction())

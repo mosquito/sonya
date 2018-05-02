@@ -2,12 +2,13 @@ import abc
 
 
 class BaseField:
-    __slots__ = 'index',
+    __slots__ = 'index', 'default'
 
     TYPE = None
     DEFAULT = None
+    _DEFAULT = object()
 
-    def __init__(self, index=None):
+    def __init__(self, default=_DEFAULT, index=None):
         """ Base field for the sophia document definition
 
         :param name: field name
@@ -15,10 +16,16 @@ class BaseField:
         :type name: str
         :type index: int
         """
+
         if index is not None and index < 0:
             raise ValueError('Index must be grater then zero')
 
         self.index = index
+
+        if default is self._DEFAULT:
+            default = self.DEFAULT
+
+        self.default = default
 
     def value(self):
         result = self.TYPE.value

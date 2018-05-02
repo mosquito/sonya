@@ -4,7 +4,7 @@ from six import with_metaclass
 from sonya.fields import BaseField
 
 
-class SchemaBase:
+class SchemaBase(object):
     def __iter__(self):
         for field_name, field in self._fields.items():
             yield field_name, field
@@ -28,9 +28,10 @@ class SchemaMeta(type):
             if field.index is not None:
                 keys[field.index] = field
 
-        for idx in range(max(keys.keys()) + 1):
-            if idx not in keys:
-                raise KeyError('Key fields must be numbered continuously')
+        if keys:
+            for idx in range(max(keys.keys()) + 1):
+                if idx not in keys:
+                    raise KeyError('Key fields must be numbered continuously')
 
         dct['_fields'] = fields
         dct['_keys'] = keys
