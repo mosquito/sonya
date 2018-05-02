@@ -4,7 +4,7 @@ from sonya import fields, Schema
 
 
 class SexEnum(IntEnum):
-    male = 0
+    male = -1
     female = 1
 
 
@@ -24,6 +24,12 @@ def users(sonya_env):
 
 def test_insert(users):
     with users.transaction() as tx:
+        document = users.document(name='Jane', surname='Doe')
+        document['sex'] = SexEnum.female
+        document['age'] = 19
+
+        tx.set(document)
+
         document = users.document(name='John', surname='Doe')
         document['sex'] = SexEnum.male
         document['age'] = 18

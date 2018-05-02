@@ -149,8 +149,7 @@ cdef class Environment(object):
         cdef int rc
 
         if self.is_opened and self.env != NULL:
-            with nogil:
-                rc = sp_destroy(self.env)
+            rc = sp_destroy(self.env)
 
         self._closed = True
 
@@ -594,7 +593,7 @@ cdef class Document:
             with nogil:
                 sp_destroy(self.obj)
 
-        self.__refs.clear()
+        self.__refs[:] = []
         self.obj = NULL
 
     @property

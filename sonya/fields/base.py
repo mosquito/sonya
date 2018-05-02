@@ -1,7 +1,7 @@
 import abc
 
 
-class BaseField:
+class BaseField(object):
     __slots__ = 'index', 'default'
 
     TYPE = None
