@@ -21,5 +21,4 @@ class IntEnumField(Int16Field):
 
     def to_python(self, value):
         num = super(IntEnumField, self).to_python(value)
-        print(num)
         return self.enum(num)

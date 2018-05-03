@@ -1,3 +1,6 @@
+import uuid
+from random import choice, randint
+
 import pytest
 from enum import IntEnum
 from sonya import fields, Schema
@@ -8,16 +11,27 @@ class SexEnum(IntEnum):
     female = 1
 
 
-class Users(Schema):
+class UsersSchema(Schema):
     name = fields.StringField(index=0)
     surname = fields.StringField(index=1)
     sex = fields.IntEnumField(SexEnum)
     age = fields.UInt8Field()
 
 
+class SequenceSchema(Schema):
+    key = fields.UInt32Field(index=0)
+
+
 @pytest.fixture()
 def users(sonya_env):
-    db = sonya_env.database('users', Users())
+    db = sonya_env.database('users', UsersSchema())
+    sonya_env.open()
+    return db
+
+
+@pytest.fixture()
+def sequence(sonya_env):
+    db = sonya_env.database('sequence', SequenceSchema())
     sonya_env.open()
     return db
 
@@ -115,3 +129,33 @@ def test_cursor(users):
         assert document['surname'] == 'Doe'
         assert document['sex'] in (SexEnum.female, SexEnum.male)
         assert document['age'] in (18, 19)
+
+
+def test_length(users):
+    for i in range(1000):
+        assert len(users) == i
+
+        users.set(
+            users.document(
+                name=uuid.uuid4().hex,
+                surname=uuid.uuid4().hex,
+                sex=choice([SexEnum.female, SexEnum.male]),
+                age=randint(1, 100)
+            )
+        )
+
+
+def test_delete_many(sequence):
+    for i in range(5000):
+        sequence.set(sequence.document(key=i))
+
+    assert len(sequence) == 5000
+    assert sequence.delete_many(order='<', key=100) == 100
+    assert len(sequence) == 4900
+
+    assert sequence.delete_many(order='>=', key=4000) == 1000
+    assert len(sequence) == 3900
+
+    assert sequence.delete_many() == 3900
+    assert len(sequence) == 0
+
