@@ -4,9 +4,6 @@ from .db import Database
 
 class Environment:
     def __init__(self, path):
-        """ Creates an environment
-        :type path: str
-        """
         self.path = path
         self.env = None
         self.databases = dict()
@@ -34,11 +31,6 @@ class Environment:
         raise ValueError('Value must be str or int')
 
     def open(self):
-        """ Open the environment
-
-        :return bool
-        """
-
         if self.env.is_closed:
             self._create_env()
 
@@ -46,16 +38,10 @@ class Environment:
 
     @property
     def is_closed(self):
-        """
-        :return: bool
-        """
         return self.env.is_closed
 
     @property
     def is_opened(self):
-        """
-        :return: bool
-        """
         return self.env.is_opened
 
     def __del__(self):
@@ -72,12 +58,6 @@ class Environment:
         self.env.close()
 
     def database(self, name, schema, **kwargs):
-        """ Declaring a new database
-
-        :type name: str
-        :type schema: Schema
-        :return Database
-        """
         db = Database(name, schema)
         db.define(self, **kwargs)
 

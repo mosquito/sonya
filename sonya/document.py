@@ -1,14 +1,7 @@
-from .schema import Schema
-
-
 class Document:
     __slots__ = 'value', '__schema', '__types', '__readonly'
 
     def __init__(self, doc, schema, readonly=False):
-        """
-
-        :type schema: Schema
-        """
         self.value = doc
         self.__schema = schema
         self.__types = {}

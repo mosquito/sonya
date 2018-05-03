@@ -49,20 +49,12 @@ class Transaction:
 
 class Database:
     def __init__(self, name, schema):
-        """
-        :type environment: Environment
-        :type schema: Schema
-        :type name: str
-        """
         self.name = name
         self.schema = schema
         self.environment = None
         self.db = None
 
     def define(self, environment, **kwargs):
-        """
-        :type environment: Environment
-        """
         self.environment = environment
         self.environment["db"] = self.name.encode()
 
