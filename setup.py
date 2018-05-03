@@ -1,7 +1,7 @@
 try:
-    from setuptools import setup, Extension
+    from setuptools import setup, Extension, find_packages
 except ImportError:
-    from distutils.core import setup, Extension
+    from distutils.core import setup, Extension, find_packages
 
 
 try:
@@ -26,7 +26,7 @@ except ImportError:
 
 setup(
     name='sonya',
-    version='0.4.0',
+    version='0.5.0',
     description='Python bindings for the sophia database.',
     long_description=open('README.rst').read(),
     author='Charles Leifer',
@@ -36,7 +36,7 @@ setup(
     ext_modules=extensions,
     license='BSD',
     include_package_data=True,
-    packages=['sonya'],
+    packages=find_packages(exclude=['tests']),
     classifiers=[
         'License :: OSI Approved :: BSD License',
         'Topic :: Software Development',
@@ -53,10 +53,20 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: Implementation :: CPython',
     ],
+    python_requires=">=2.7.*, <4",
+    install_requires=[
+        'six',
+    ],
     extras_require={
         'develop': [
             'Cython',
             'pytest',
+            'backports.tempfile',
+            'msgpack-python',
         ],
+        'msgpack': [
+            'msgpack-python',
+        ],
+        ':python_version < "3"': ['py2-ipaddress', 'enum34'],
     },
 )
