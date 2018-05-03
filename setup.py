@@ -26,13 +26,11 @@ except ImportError:
 
 setup(
     name='sonya',
-    version='0.6.4',
+    version='0.6.5',
     description='Python bindings for the sophia database.',
     long_description=open('README.rst').read(),
-    author='Charles Leifer',
-    author_email="coleifer@gmail.com",
-    maintainer='Dmitry Orlov',
-    maintainer_email='me@mosquito.su',
+    author='Dmitry Orlov',
+    author_email="me@mosquito.su",
     ext_modules=extensions,
     license='BSD',
     include_package_data=True,

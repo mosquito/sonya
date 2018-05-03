@@ -107,5 +107,5 @@ class Database:
     def __len__(self):
         return len(self.db)
 
-    def delete_many(self, **query) -> int:
+    def delete_many(self, **query):
         return self.db.delete_many(**query)
