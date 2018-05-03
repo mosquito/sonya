@@ -5,13 +5,23 @@ from sonya.fields import BaseField
 
 
 class SchemaBase(object):
+    def __init__(self, *args, **kwargs):
+        self.__fields = copy(self._fields)
+        self.__keys = frozenset(
+            {k for k, v in self.fields.items() if v.index is not None}
+        )
+
     def __iter__(self):
-        for field_name, field in self._fields.items():
+        for field_name, field in self.fields.items():
             yield field_name, field
 
     @property
+    def keys(self):
+        return self.__keys
+
+    @property
     def fields(self):
-        return copy(self._fields)
+        return self.__fields
 
 
 class SchemaMeta(type):

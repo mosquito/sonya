@@ -15,11 +15,20 @@ class Transaction:
         return self.tx.set(document.value)
 
     def get(self, **kwargs):
+        if frozenset(kwargs.keys()) != self.db.schema.keys:
+            raise ValueError('Not enough key fields')
+
         if self.db is None:
             raise RuntimeError("Can not get object on environment transaction")
 
         doc = self.tx.get(self.db.document(**kwargs).value)
         return Document(doc, self.db.schema, readonly=True)
+
+    def delete(self, **kwargs):
+        if self.db is None:
+            raise RuntimeError("Can not get object on environment transaction")
+
+        return self.tx.delete(self.db.document(**kwargs).value)
 
     def commit(self):
         return self.tx.commit()
@@ -86,9 +95,19 @@ class Database:
         self.db.set(document.value)
 
     def get(self, **kwargs):
+        if frozenset(kwargs.keys()) != self.schema.keys:
+            raise ValueError('Not enough key fields')
+
         doc = self.document(**kwargs)
         return Document(self.db.get(doc.value), self.schema, readonly=True)
+
+    def delete(self, **kwargs):
+        doc = self.document(**kwargs)
+        return self.db.delete(doc.value)
 
     def cursor(self, **query):
         for doc in self.db.cursor(query):
             yield Document(doc, self.schema, readonly=True)
+
+    def __iter__(self):
+        return self.cursor()

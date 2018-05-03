@@ -345,6 +345,9 @@ cdef class Transaction:
         return rc
 
     def get(self, Document query) -> Document:
+        if self.db is None:
+            raise RuntimeError("Can not get object on environment transaction")
+
         cdef void* result_ptr = NULL
 
         with nogil:
@@ -355,13 +358,19 @@ cdef class Transaction:
         if result_ptr == NULL:
             raise LookupError
 
-        if self.db is None:
-            raise RuntimeError("Can not get object on environment transaction")
-
         result = Document(self.db, external=True, readonly=True)
         result.obj = result_ptr
         result.external = False
         return result
+
+    def delete(self, Document query):
+        cdef int rc
+
+        with nogil:
+            rc = sp_delete(self.tx, query.obj)
+            query.obj = NULL
+
+        return self.__check_error(rc)
 
     def commit(self) -> int:
         self.__check_closed()
@@ -466,6 +475,7 @@ cdef class Database:
 
         with nogil:
             rc = sp_delete(self.db, document.obj)
+            document.obj = NULL
 
         return self.__check_error(rc)
 

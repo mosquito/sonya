@@ -29,7 +29,7 @@ class Environment:
         if isinstance(value, bytes):
             return self.env.set_string(key, value)
         elif isinstance(value, int):
-            return self.env.set_string(key, value)
+            return self.env.set_int(key, value)
 
         raise ValueError('Value must be str or int')
 

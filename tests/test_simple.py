@@ -42,6 +42,28 @@ def test_insert(users):
 
         assert dict(document) == expected
 
+    with users.transaction() as tx:
+        tx.delete(name='John', surname='Doe')
+
+        with pytest.raises(LookupError):
+            tx.get(name='John', surname='Doe')
+
+
+def test_no_transaction(users):
+    document = users.document(name='John', surname='Doe')
+    document['sex'] = SexEnum.male
+    document['age'] = 18
+
+    expected = dict(document)
+
+    users.set(document)
+    document = users.get(name='John', surname='Doe')
+
+    assert dict(document) == expected
+
+    with pytest.raises(ValueError):
+        users.get(name='John')
+
 
 def test_transaction(users):
     tx = users.transaction()
@@ -54,9 +76,42 @@ def test_transaction(users):
 
     document = tx.get(name='John', surname='Doe')
 
+    with pytest.raises(ValueError):
+        tx.get(name='John')
+
     assert dict(document) == expected
     tx.rollback()
 
     with users.transaction() as tx:
         with pytest.raises(LookupError):
             tx.get(name='John', surname='Doe')
+
+        with pytest.raises(ValueError):
+            tx.get(name='John')
+
+
+def test_cursor(users):
+    with users.transaction() as tx:
+        tx.set(
+            users.document(
+                name='Jane',
+                surname='Doe',
+                sex=SexEnum.female,
+                age=19
+            )
+        )
+
+        tx.set(
+            users.document(
+                name='John',
+                surname='Doe',
+                sex=SexEnum.male,
+                age=18
+            )
+        )
+
+    for document in users.cursor():
+        assert document['name'] in ('John', 'Jane')
+        assert document['surname'] == 'Doe'
+        assert document['sex'] in (SexEnum.female, SexEnum.male)
+        assert document['age'] in (18, 19)
