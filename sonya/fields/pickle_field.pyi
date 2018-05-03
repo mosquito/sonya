@@ -1,0 +1,9 @@
+from typing import Any
+from .bytes_field import BytesField
+
+
+class PickleField(BytesField):
+    DEFAULT = ...
+
+    def from_python(self, value: Any) -> bytes: ...
+    def to_python(self, value: bytes) -> Any: ...

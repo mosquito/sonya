@@ -1,0 +1,16 @@
+from typing import Generator, FrozenSet, Dict
+from .fields import BaseField
+
+
+class SchemaBase(object):
+    def __init__(self, *args, **kwargs): ...
+    def __iter__(self) -> Generator[str, BaseField]: ...
+
+    @property
+    def keys(self) -> FrozenSet[str]: ...
+
+    @property
+    def fields(self) -> Dict[str, BaseField]: ...
+
+
+class Schema(SchemaBase): ...
