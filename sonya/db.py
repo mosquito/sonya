@@ -103,3 +103,9 @@ class Database:
 
     def __iter__(self):
         return self.cursor()
+
+    def __len__(self):
+        return len(self.db)
+
+    def delete_many(self, **query) -> int:
+        return self.db.delete_many(**query)

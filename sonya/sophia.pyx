@@ -1,5 +1,5 @@
 from cpython cimport bool
-from libc.stdint cimport int64_t
+from libc.stdint cimport int64_t, int32_t
 from libc.stdlib cimport calloc, free
 from libc.string cimport memcpy, memcmp
 
@@ -425,7 +425,7 @@ cdef class Database:
 
     def __check_error(self, int rc):
         if rc != -1:
-            return
+            return rc
 
         try:
             error = self.env.get_string('sophia.error').decode('utf-8', 'ignore')
@@ -479,6 +479,42 @@ cdef class Database:
 
         return self.__check_error(rc)
 
+    cdef int32_t get_length(self) nogil:
+        cdef void* obj
+        cdef void* cursor
+        cdef size_t result = 0
+
+        obj = sp_document(self.db)
+
+        if obj == NULL:
+            return -1
+
+        cursor = sp_cursor(self.env.env)
+
+        if not cursor:
+            return -1
+
+        while True:
+            obj = sp_get(cursor, obj)
+
+            if obj != NULL:
+                result += 1
+            else:
+                break
+
+        if cursor != NULL:
+            sp_destroy(cursor)
+
+        return result
+
+    def __len__(self) -> int:
+        cdef int32_t result = 0
+
+        with nogil:
+            result = self.get_length()
+
+        return self.__check_error(result)
+
     def cursor(self, dict query) -> Cursor:
         return Cursor(self.env, query, self)
 
@@ -486,11 +522,140 @@ cdef class Database:
         self.env.check_closed()
         return self.env.transaction()
 
+    def delete_many(self, **query):
+        query.setdefault('order', '>=')
+
+        if query['order'] not in ('>=', '<=', '>', '<'):
+            raise ValueError('Invalid order')
+
+        cdef void* obj
+
+        with nogil:
+            obj = sp_document(self.db)
+
+        if obj == NULL:
+            self.__check_error(-1)
+
+        prefix = '%s.scheme.' % self.name
+        key_fields = []
+
+        for key, value in self.env._configuration:
+            if not key.startswith(prefix):
+                continue
+
+            if isinstance(value, int):
+                continue
+
+            if ',key(' not in value:
+                continue
+
+            key_fields.append((
+                key.replace(prefix, '').encode(),
+                'string' in value
+            ))
+
+        cdef size_t key_num = len(key_fields)
+
+        cdef char **keys = <char**> calloc(sizeof(char*), key_num)
+        cdef char *str_key = <char*> calloc(sizeof(char), key_num)
+
+        for idx, item in enumerate(key_fields):
+            key, is_str = item
+
+            keys[idx] = key
+            str_key[idx] = is_str
+
+        document = Document(self, external=True)
+        document.obj = obj
+
+        for key, value in query.items():
+            if not isinstance(key, str):
+                raise BadQuery("Bad key. Key must be str %r %r" % (
+                    key, type(key)
+                ))
+
+            if isinstance(value, int):
+                document.set_int(key, value)
+            elif isinstance(value, bytes):
+                document.set_string(key, value)
+            elif isinstance(value, str):
+                document.set_string(key, value.encode())
+            else:
+                raise BadQuery(
+                    "Bad value. Value must be bytes or int not %r %r" % (
+                        value, type(value)
+                    )
+                )
+
+        document.obj = NULL
+
+        cdef void* tx
+        cdef void* cursor
+
+        with nogil:
+            cursor = sp_cursor(self.env.env)
+            tx = sp_begin(self.env.env)
+
+        if tx == NULL or cursor == NULL:
+            self.__check_error(-1)
+
+        cdef size_t result = 0
+        cdef void *rm_obj
+        cdef char* str_v
+        cdef int64_t int_v
+        cdef int nlen
+
+        with nogil:
+            while True:
+                obj = sp_get(cursor, obj)
+
+                if obj == NULL:
+                    if cursor != NULL:
+                        sp_destroy(cursor)
+                    break
+
+                rm_obj = sp_document(self.db)
+
+                for i in range(key_num):
+                    k = keys[i]
+
+                    if str_key[i]:
+                        str_v = <char *>sp_getstring(obj, keys[i], &nlen)
+
+                        sp_setstring(rm_obj, keys[i], str_v, nlen)
+                        nlen = 0
+                    else:
+                        int_v = sp_getint(obj, keys[i])
+                        sp_setint(rm_obj, keys[i], int_v)
+
+                    str_v = b''
+                    int_v = 0
+
+                sp_delete(tx, rm_obj)
+                result += 1
+
+            sp_commit(tx)
+
+        free(str_key)
+        free(keys)
+
+        return result
+
 
 cdef class Cursor:
     cdef readonly Environment env
     cdef readonly Database db
     cdef readonly dict query
+
+    def __raise_error(self):
+        try:
+            error = self.env.get_string(
+                'sophia.error'
+            ).decode('utf-8', 'ignore')
+        except KeyError:
+            error = 'unknown error occurred.'
+
+        raise SophiaError(error)
 
     def __cinit__(self, Environment env, dict query, Database db):
         self.db = db
@@ -511,13 +676,7 @@ cdef class Cursor:
             obj = sp_document(self.db.db)
 
         if obj == NULL:
-            try:
-                error = self.env.get_string('sophia.error').decode('utf-8', 'ignore')
-            except KeyError:
-                error = 'unknown error occurred.'
-
-            raise SophiaError(error)
-
+            self.__raise_error()
 
         cdef void* cursor
 
@@ -525,13 +684,7 @@ cdef class Cursor:
             cursor = sp_cursor(self.env.env)
 
         if not cursor:
-            try:
-                error = self.env.get_string('sophia.error').decode('utf-8', 'ignore')
-            except KeyError:
-                error = 'unknown error occurred.'
-
-            raise SophiaError(error)
-
+            self.__raise_error()
 
         document.obj = obj
 
@@ -615,7 +768,9 @@ cdef class Document:
             return
 
         try:
-            error = self.db.env.get_string('sophia.error').decode('utf-8', 'ignore')
+            error = self.db.env.get_string(
+                'sophia.error'
+            ).decode('utf-8', 'ignore')
         except KeyError:
             error = 'unknown error occurred.'
 
