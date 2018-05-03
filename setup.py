@@ -26,7 +26,7 @@ except ImportError:
 
 setup(
     name='sonya',
-    version='0.6.1',
+    version='0.6.3',
     description='Python bindings for the sophia database.',
     long_description=open('README.rst').read(),
     author='Charles Leifer',

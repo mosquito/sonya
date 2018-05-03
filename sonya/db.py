@@ -1,5 +1,4 @@
 from .document import Document
-from .schema import Schema
 
 
 class Transaction:

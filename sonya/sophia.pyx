@@ -227,6 +227,9 @@ cdef class Environment(object):
 
         return db
 
+    def transaction(self) -> Transaction:
+        return Transaction(self)
+
 
 cdef class Configuration:
     cdef readonly Environment env
@@ -293,7 +296,6 @@ cdef class Configuration:
 cdef class Transaction:
     cdef void* tx
     cdef readonly Environment env
-    cdef readonly Database db
     cdef readonly bool closed
     cdef readonly list __refs
 
@@ -314,10 +316,9 @@ cdef class Transaction:
 
         self.env.check_closed()
 
-    def __cinit__(self, Environment env, Database db):
+    def __cinit__(self, Environment env):
         self.closed = True
         self.env = env
-        self.db = db
 
         with nogil:
             self.tx = sp_begin(env.env)
@@ -345,10 +346,9 @@ cdef class Transaction:
         return rc
 
     def get(self, Document query) -> Document:
-        if self.db is None:
-            raise RuntimeError("Can not get object on environment transaction")
-
         cdef void* result_ptr = NULL
+
+        cdef Database db = query.db
 
         with nogil:
             result_ptr = sp_get(self.tx, query.obj)
@@ -358,7 +358,7 @@ cdef class Transaction:
         if result_ptr == NULL:
             raise LookupError
 
-        result = Document(self.db, external=True, readonly=True)
+        result = Document(db, external=True, readonly=True)
         result.obj = result_ptr
         result.external = False
         return result
@@ -484,7 +484,7 @@ cdef class Database:
 
     def transaction(self) -> Transaction:
         self.env.check_closed()
-        return Transaction(self.env, self)
+        return self.env.transaction()
 
 
 cdef class Cursor:
