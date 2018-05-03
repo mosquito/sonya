@@ -1,10 +1,17 @@
-from typing import Union, Tuple
+from typing import Union, Tuple, Dict
 
+from . import sophia
 from .schema import Schema
+from .fields import BaseField
 
 
 class Document:
-    def __init__(self, doc: Document, schema: Schema, readonly=False): ...
+    def __init__(self, doc: Document, schema: Schema, readonly=False):
+        self.value = ...        # type: sophia.Document
+        self.__schema = ...     # type: Schema
+        self.__types = ...      # type: Dict[str, BaseField]
+        self.__readonly = ...   # type: bool
+
     def update(self, **kwargs): ...
     def __setitem__(self, key, value): ...
     def __getitem__(self, key) -> Union[int, str]: ...
@@ -14,5 +21,3 @@ class Document:
 
     @property
     def __dict__(self) -> dict: ...
-
-    value = ...

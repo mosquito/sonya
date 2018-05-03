@@ -1,12 +1,19 @@
 from typing import Generator
 
+from . import sophia
 from .env import Environment
 from .document import Document
 from .schema import Schema
 
 
 class Transaction:
-    def __init__(self, db: Database): ...
+    db = ...  # type: Database
+    tx = ...  # type: sophia.Transaction
+
+    def __init__(self, db: Database):
+        self.db = ...   # type: Database
+        self.tx = ...   # type: sophia.Transaction
+
     def set(self, document: Document): ...
     def get(self, **kwargs) -> Document: ...
     def delete(self, **kwargs): ...
@@ -17,9 +24,12 @@ class Transaction:
 
 
 class Database:
-    db = ...
+    def __init__(self, name: str, schema: Schema):
+        self.name = ...         # type: str
+        self.schema = ...       # type: Schema
+        self.environment = ...  # type: Environment
+        self.db = ...           # type: sophia.Database
 
-    def __init__(self, name: str, schema: Schema): ...
     def define(self, environment: Environment, **kwargs) -> "Database": ...
     def transaction(self) -> Transaction: ...
     def document(self, **kwargs) -> Document: ...

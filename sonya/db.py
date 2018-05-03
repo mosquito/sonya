@@ -84,10 +84,7 @@ class Database:
         if not isinstance(document, Document):
             raise ValueError
 
-        try:
-            self.db.set(document.value)
-        except Exception as e:
-            raise
+        self.db.set(document.value)
 
     def get(self, **kwargs):
         if frozenset(kwargs.keys()) & self.schema.keys != self.schema.keys:

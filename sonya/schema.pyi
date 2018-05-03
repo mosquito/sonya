@@ -3,7 +3,11 @@ from .fields import BaseField
 
 
 class SchemaBase(object):
-    def __init__(self, *args, **kwargs): ...
+    _fields = ...   # type: Dict[str, BaseField]
+
+    def __init__(self, *args, **kwargs):
+        self.__keys = ...   # type: FrozenSet[str]
+
     def __iter__(self) -> Generator[str, BaseField]: ...
 
     @property
