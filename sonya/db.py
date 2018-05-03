@@ -1,4 +1,5 @@
 from .document import Document
+from .schema import Schema
 
 
 class Transaction:
@@ -92,10 +93,13 @@ class Database:
         if not isinstance(document, Document):
             raise ValueError
 
-        self.db.set(document.value)
+        try:
+            self.db.set(document.value)
+        except Exception as e:
+            raise
 
     def get(self, **kwargs):
-        if frozenset(kwargs.keys()) != self.schema.keys:
+        if frozenset(kwargs.keys()) & self.schema.keys != self.schema.keys:
             raise ValueError('Not enough key fields')
 
         doc = self.document(**kwargs)

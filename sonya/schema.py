@@ -1,27 +1,27 @@
-from copy import copy
-
 from six import with_metaclass
 from sonya.fields import BaseField
 
 
 class SchemaBase(object):
     def __init__(self, *args, **kwargs):
-        self.__fields = copy(self._fields)
-        self.__keys = frozenset(
-            {k for k, v in self.fields.items() if v.index is not None}
-        )
+        self.__keys = None
 
     def __iter__(self):
-        for field_name, field in self.fields.items():
+        for field_name, field in self._fields.items():
             yield field_name, field
 
     @property
     def keys(self):
+        if self.__keys is None:
+            self.__keys = frozenset(
+                {k for k, v in self.fields.items() if v.index is not None}
+            )
+
         return self.__keys
 
     @property
     def fields(self):
-        return self.__fields
+        return dict(self._fields)
 
 
 class SchemaMeta(type):
