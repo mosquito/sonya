@@ -40,7 +40,7 @@ FIELD_TYPES = [
 ]
 
 
-class TestSchema(Schema):
+class DummySchema(Schema):
     pass
 
 
@@ -49,7 +49,7 @@ def schema_generator():
         key = key_field(index=0)
         value = value_field()
 
-        schema = TestSchema()
+        schema = DummySchema()
         schema._fields = {
             uuid.uuid4().hex[:8]: key,
             uuid.uuid4().hex[:8]: value,

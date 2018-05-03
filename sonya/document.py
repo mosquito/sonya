@@ -1,3 +1,6 @@
+from .schema import Schema
+
+
 class Document:
     __slots__ = 'value', '__schema', '__types', '__readonly'
 
