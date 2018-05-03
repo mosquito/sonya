@@ -209,6 +209,10 @@ Sonya
    for document in db.cursor():
       print(document)
 
+   # Delete multiple documents
+   # fastest method for remove multiple documents from database
+   db.delete_many(order='>=')
+
 
 Fetching ranges (Cursors)
 +++++++++++++++++++++++++
@@ -295,6 +299,69 @@ For prefix search use a part of the key and order:
     # {'value': None, 'key': '9998'}
     # {'value': None, 'key': '9999'}
 
+
+Deleting multiple documents
++++++++++++++++++++++++++++
+
+Sonya provides delete_many method. This method is fastest option when
+you want to remove multiple documents from the database. The method
+has cursor-like interface. The whole operation will be processed
+in the one transaction.
+
+The method returns number of affected rows.
+
+.. code-block:: python
+
+    from sonya import Environment, fields, Schema
+
+
+    class IntSchema(Schema):
+        key = fields.UInt32Field(index=0)
+        value = fields.PickleField()
+
+
+    env = Environment('/tmp/test-env')
+    db = env.database('test-integer-db', IntSchema(), compression='zstd')
+    env.open()
+
+
+    with db.transaction() as tx:
+        for i in range(10000):
+            tx.set(db.document(key=i, value=None))
+
+    # returns the number of affected rows
+    db.delete_many(order='>=', key=9995):
+
+
+Document count
+++++++++++++++
+
+The Database objects has a `__len__` method. Please avoid to use it
+for any big database, it iterates and count the documents each time
+(faster then using `len(list(db.cursor()))` but still has O(n) complexity).
+
+
+.. code-block:: python
+
+    from sonya import Environment, fields, Schema
+
+
+    class IntSchema(Schema):
+        key = fields.UInt32Field(index=0)
+        value = fields.PickleField()
+
+
+    env = Environment('/tmp/test-env')
+    db = env.database('test-integer-db', IntSchema(), compression='zstd')
+    env.open()
+
+
+    with db.transaction() as tx:
+        for i in range(10000):
+            tx.set(db.document(key=i, value=None))
+
+    print(len(db))
+    # 10000
 
 
 Transactions
