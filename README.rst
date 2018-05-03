@@ -4,6 +4,19 @@
    :width: 215 px
    :alt: Sophia Library
 
+.. image:: https://img.shields.io/pypi/v/sonya.svg
+    :target: https://pypi.python.org/pypi/sonya/
+    :alt: Latest Version
+
+.. image:: https://img.shields.io/pypi/wheel/sonya.svg
+    :target: https://pypi.python.org/pypi/sonya/
+
+.. image:: https://img.shields.io/pypi/pyversions/sonya.svg
+    :target: https://pypi.python.org/pypi/sonya/
+
+.. image:: https://img.shields.io/pypi/l/sonya.svg
+    :target: https://pypi.python.org/pypi/sonya/
+
 .. _Sophia embedded database: http://sophia.systems/
 
 Sonya
