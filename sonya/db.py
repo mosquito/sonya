@@ -52,25 +52,7 @@ class Database:
         self.schema = schema
         self.environment = None
         self.db = None
-
-    def define(self, environment, **kwargs):
-        self.environment = environment
-        self.environment["db"] = self.name.encode()
-
-        key_base = ".".join(("db", self.name, 'scheme'))
-
-        for field_name, field_type in self.schema:
-            self.environment[key_base] = field_name.encode()
-            k = ".".join((key_base, field_name))
-            self.environment[k] = field_type.value()
-
-        for key, value in kwargs.items():
-            if isinstance(value, str):
-                value = value.encode()
-
-            self.environment['.'.join(('db', self.name, key))] = value
-
-        return self
+        self.environment = None
 
     def transaction(self):
         return Transaction(self)

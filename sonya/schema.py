@@ -1,4 +1,3 @@
-from six import with_metaclass
 from sonya.fields import BaseField
 
 
@@ -22,6 +21,21 @@ class SchemaBase(object):
     @property
     def fields(self):
         return dict(self._fields)
+
+    def define_db(self, db_name, *args, **kwargs):
+        yield "db", db_name
+
+        key_base = ".".join(("db", db_name, 'scheme'))
+
+        for field_name, field_type in self:
+            yield key_base, field_name
+            yield ".".join((key_base, field_name)), field_type.value()
+
+        for key, value in args:
+            yield '.'.join(('db', db_name, key)), value
+
+        for key, value in kwargs.items():
+            yield '.'.join(('db', db_name, key)), value
 
 
 class SchemaMeta(type):
@@ -50,6 +64,19 @@ class SchemaMeta(type):
 
     def __init__(cls, name, bases, dct):
         super(SchemaMeta, cls).__init__(name, bases, dct)
+
+
+def with_metaclass(meta, *bases):
+    class metaclass(type):
+
+        def __new__(cls, name, this_bases, d):
+            return meta(name, bases, d)
+
+        @classmethod
+        def __prepare__(cls, name, this_bases):
+            return meta.__prepare__(name, bases)
+
+    return type.__new__(metaclass, 'temporary_class', (), {})
 
 
 Schema = with_metaclass(SchemaMeta, SchemaBase)

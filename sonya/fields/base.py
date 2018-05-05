@@ -31,7 +31,7 @@ class BaseField(object):
         result = self.TYPE.value
 
         if self.index is not None:
-            result += b",key(" + str(self.index).encode() + b")"
+            result += ",key(%d)" % self.index
 
         return result
 

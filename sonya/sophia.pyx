@@ -1,5 +1,5 @@
 from cpython cimport bool
-from libc.stdint cimport int64_t, int32_t
+from libc.stdint cimport int64_t, int32_t, uint64_t
 from libc.stdlib cimport calloc, free
 from libc.string cimport memcpy, memcmp
 
@@ -41,15 +41,15 @@ IndexType = namedtuple('IndexType', ('value', 'is_bytes'))
 
 
 cdef class Types:
-    string = IndexType(b'string', True)
-    u64 = IndexType(b'u64', False)
-    u32 = IndexType(b'u32', False)
-    u16 = IndexType(b'u16', False)
-    u8 = IndexType(b'u8', False)
-    u64_rev = IndexType(b'u64_rev', False)
-    u32_rev = IndexType(b'u32_rev', False)
-    u16_rev = IndexType(b'u16_rev', False)
-    u8_rev = IndexType(b'u8_rev', False)
+    string = IndexType('string', True)
+    u64 = IndexType('u64', False)
+    u32 = IndexType('u32', False)
+    u16 = IndexType('u16', False)
+    u8 = IndexType('u8', False)
+    u64_rev = IndexType('u64_rev', False)
+    u32_rev = IndexType('u32_rev', False)
+    u16_rev = IndexType('u16_rev', False)
+    u8_rev = IndexType('u8_rev', False)
 
 
 cdef class cstring:
@@ -200,7 +200,7 @@ cdef class Environment(object):
         self.__check_error(rc)
         return rc
 
-    def set_int(self, str key, int value) -> int:
+    def set_int(self, str key, int64_t value) -> int:
         self.check_closed()
 
         cdef cstring ckey = cstring.from_string(key)
@@ -212,6 +212,19 @@ cdef class Environment(object):
 
         self.__check_error(rc)
         return rc
+
+    def __setitem__(self, str key, value):
+        if isinstance(value, bytes):
+            self.set_string(key, value)
+        elif isinstance(value, str):
+            self.set_string(key, value.encode())
+        elif isinstance(value, int):
+            self.set_int(key, value)
+        else:
+            raise ValueError('Value must be str or int')
+
+    def __getitem__(self, str item):
+        return self.get_string(item)
 
     def get_object(self, str name) -> Database:
         self.check_closed()
@@ -281,9 +294,6 @@ cdef class Configuration:
 
                 key_len = 0
                 value_len = 0
-
-                if v.isdigit():
-                    v = int(v)
 
                 yield k, v
 
@@ -823,7 +833,7 @@ cdef class Document:
         self.__refs.append(cvalue)
         return rc
 
-    def set_int(self, str key, int value) -> int:
+    def set_int(self, str key, int64_t value) -> int:
         if self.readonly:
             raise RuntimeError('read-only document')
 
@@ -837,3 +847,16 @@ cdef class Document:
             rc = sp_setint(self.obj, ckey.c_str, cvalue)
 
         return self.__check_error(rc)
+
+    def __setitem__(self, str key, value):
+        if isinstance(value, bytes):
+            self.set_string(key, value)
+        elif isinstance(value, str):
+            self.set_string(key, value.encode())
+        elif isinstance(value, int):
+            self.set_int(key, value)
+        else:
+            raise ValueError('Value must be str or int')
+
+    def __getitem__(self, str item):
+        return self.get_string(item)

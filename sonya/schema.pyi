@@ -1,4 +1,4 @@
-from typing import Generator, FrozenSet, Dict
+from typing import Generator, FrozenSet, Dict, Tuple
 from .fields import BaseField
 
 
@@ -16,5 +16,7 @@ class SchemaBase(object):
     @property
     def fields(self) -> Dict[str, BaseField]: ...
 
+    def define_db(self, db_name: str, *args,
+                  **kwargs) -> Generator[Tuple[str, str]]: ...
 
 class Schema(SchemaBase): ...

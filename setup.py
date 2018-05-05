@@ -52,9 +52,7 @@ setup(
         'Programming Language :: Python :: Implementation :: CPython',
     ],
     python_requires=">=2.7.*, <4",
-    install_requires=[
-        'six',
-    ],
+    install_requires=[],
     extras_require={
         'develop': [
             'Cython',

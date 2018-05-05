@@ -16,7 +16,7 @@ def sonya_env():
         try:
             yield env
         finally:
-            env.close()
+            env.close(reopen=False)
 
 
 class BytesSchema(Schema):
